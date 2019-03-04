@@ -95,7 +95,8 @@ parallel(pipelineContext.getBuildConfig().getSupportedHadoopDistributions().coll
                                         -f hadoop/${distribution.name}/Dockerfile.kerberos \
                                         --build-arg FROM_IMAGE=${REGISTRY_PREFIX}/${imageName}:${version} \
                                         --build-arg H2O_BRANCH=${params.gitBranch} \
-                                        --build-arg PATH_PREFIX=hadoop/${distribution.name} .
+                                        --build-arg PATH_PREFIX=hadoop/${distribution.name} \
+                                        --build-arg HIVE_VERSION=${distribution.hiveVersion} .
                                 """
                             }
                         }

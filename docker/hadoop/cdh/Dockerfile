@@ -1,5 +1,5 @@
 # pull base image
-FROM ubuntu:16.04
+FROM harbor.h2o.ai/opsh2oai/h2o-3/dev-r-3.4.1-jdk-8:10
 
 # maintainer details
 MAINTAINER h2oai "h2o.ai"
@@ -11,18 +11,16 @@ RUN \
         exit 1; \
     fi
 ARG PATH_PREFIX='.'
-ARG DEFAULT_USER_UID=2117
-ARG R_VERSION='3.4.1'
 ARG PYTHON_VERSIONS='2.7,3.6'
-ARG JAVA_VERSIONS='8'
 ARG AWS_ACCESS_KEY
 ARG AWS_SECRET_ACCESS_KEY
+ARG HIVE_VERSION='hive'
 
 ENV DISTRIBUTION='cdh' \
     HADOOP_HOME=/usr/lib/hadoop \
     HADOOP_CONF_DIR='/etc/hadoop/conf.pseudo' \
     MASTER='yarn-client' \
-    HIVE_HOME=/usr/lib/hive
+    HIVE_HOME=/usr/lib/${HIVE_VERSION}
 
 RUN \
     apt-get update && \
@@ -56,33 +54,19 @@ RUN apt-key add archive.key && \
         hadoop-conf-pseudo python-pip python-dev python-virtualenv \
         sudo unzip html2text slapd ldap-utils libkrb5-dev
 
-# Add jenkins and users
-RUN adduser --disabled-password --gecos "" -u ${DEFAULT_USER_UID} jenkins && \
-    adduser --disabled-password --gecos "" hive
+# Add Hive user
+RUN adduser --disabled-password --gecos "" hive
 
 ARG H2O_BRANCH=master
 ENV H2O_BRANCH=${H2O_BRANCH}
 
-# Set required env vars and install Java 8 and Pythons
-COPY ${PATH_PREFIX}/scripts/sbin ${PATH_PREFIX}/../common/sbin scripts/install_java_version \
-     scripts/install_java_versions scripts/install_python_version scripts/install_R_version \
-     scripts/java-*-vars.sh /usr/sbin/
+# Set required env vars and install Pythons
+COPY ${PATH_PREFIX}/scripts/sbin ${PATH_PREFIX}/../common/sbin scripts/install_python_version /usr/sbin/
 RUN \
-  chmod 700 /usr/sbin/install_java_version && \
-  chmod 700 /usr/sbin/install_java_versions && \
-  chmod 700 /usr/sbin/java-*-vars.sh && \
-  chmod 700 /usr/sbin/setup_r_deps.sh && \
-  chmod 700 /usr/sbin/install_R_version && \
   chmod 700 /usr/sbin/install_python_version && \
   sync && \
-  /usr/sbin/install_java_versions && \
-  /usr/sbin/setup_r_deps.sh && \
-  /usr/sbin/install_R_version ${R_VERSION} && \
   /usr/sbin/install_python_version && \
   /usr/bin/activate_java_8
-ENV \
-  JAVA_HOME=/usr/lib/jvm/java-current-oracle \
-  PATH=/usr/lib/jvm/java-current-oracle/bin:/usr/local/R/current/bin/:${PATH}
 
 # Copy configs
 COPY ${PATH_PREFIX}/conf/ ${HADOOP_CONF_DIR}/
@@ -105,7 +89,7 @@ RUN chmod 700 /usr/sbin/startup.sh && \
     chmod +x /usr/sbin/install_hive.sh && \
     chmod 700 /usr/sbin/install_ldap.sh && \
     sync && \
-    /usr/sbin/install_hive.sh && \
+    /usr/sbin/install_hive.sh ${HIVE_VERSION} && \
     ln -sf /usr/share/java/mysql-connector-java.jar /usr/lib/hive/lib/mysql-connector-java.jar
 
 RUN /usr/sbin/install_ldap.sh

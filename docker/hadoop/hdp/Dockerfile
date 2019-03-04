@@ -1,17 +1,14 @@
 # pull base image
-FROM ubuntu:16.04
+FROM harbor.h2o.ai/opsh2oai/h2o-3/dev-r-3.4.1-jdk-8:10
 
 # maintainer details
 MAINTAINER h2oai "h2o.ai"
 
 ARG VERSION
 ARG PATH_PREFIX='.'
-ARG DEFAULT_USER_UID=2117
-ARG R_VERSION='3.4.1'
 ARG PYTHON_VERSIONS='2.7,3.6'
-ARG JAVA_VERSIONS='8'
-ARG HIVE_VERSION='2.2.0'
-ARG HIVE_SCHEMA_VERSION='2.1.0'
+ARG HIVE_VERSION='hive'
+ARG HIVE_SCHEMA_VERSION='1.2.0'
 
 ENV DISTRIBUTION='hdp' \
     MASTER='yarn-client' \
@@ -21,13 +18,11 @@ ENV DISTRIBUTION='hdp' \
     YARN_USER=yarn \
     YARN_CONF_DIR=/etc/hadoop/conf \
     HDFS_USER=hdfs \
-    HIVE_HOME=/home/hive/apache-hive-${HIVE_VERSION}-bin \
+    HIVE_HOME=/usr/hdp/current/hive-server2 \
     HIVE_SCHEMA_VERSION=${HIVE_SCHEMA_VERSION}
 
 # Copy bin and sbin scripts
-COPY ${PATH_PREFIX}/scripts/sbin ${PATH_PREFIX}/../common/sbin scripts/install_java_version \
-     scripts/install_java_versions scripts/install_python_version scripts/install_R_version \
-     scripts/java-*-vars.sh /usr/sbin/
+COPY ${PATH_PREFIX}/scripts/sbin ${PATH_PREFIX}/../common/sbin scripts/install_python_version /usr/sbin/
 
 # Add HDP repository and install packages
 RUN \
@@ -44,30 +39,18 @@ RUN \
         mysql-server libmysql-java libmysqlclient-dev \
         sudo unzip html2text slapd ldap-utils libkrb5-dev
 
-# Create jenkins and hive users
-RUN adduser --disabled-password --gecos "" -u ${DEFAULT_USER_UID} jenkins && \
-    adduser --disabled-password --gecos "" hive
+# Create hive user
+RUN adduser --disabled-password --gecos "" hive
 
 ARG H2O_BRANCH=master
 ENV H2O_BRANCH=${H2O_BRANCH}
 
-# Set required env vars and install Java 8 and Pythons
+# Set required env vars and install Pythons
 RUN \
-  chmod 700 /usr/sbin/install_java_version && \
-  chmod 700 /usr/sbin/install_java_versions && \
-  chmod 700 /usr/sbin/java-*-vars.sh && \
-  chmod 700 /usr/sbin/setup_r_deps.sh && \
-  chmod 700 /usr/sbin/install_R_version && \
   chmod 700 /usr/sbin/install_python_version && \
   sync && \
-  /usr/sbin/install_java_versions && \
-  /usr/sbin/setup_r_deps.sh && \
-  /usr/sbin/install_R_version ${R_VERSION} && \
   /usr/sbin/install_python_version && \
   /usr/bin/activate_java_8
-ENV \
-  JAVA_HOME=/usr/lib/jvm/java-current-oracle \
-  PATH=/usr/lib/jvm/java-current-oracle/bin:/usr/local/R/current/bin/:${PATH}
 
 # Chown folders
 RUN HDP_VERSION=$(ls /usr/hdp/ | grep -e '^2\|^3') && \
@@ -86,7 +69,7 @@ RUN rm /usr/hdp/*/hadoop/conf/* && \
 
 # Copy configs
 COPY ${PATH_PREFIX}/conf/ ${HADOOP_CONF_DIR}
-COPY ${PATH_PREFIX}/../common/conf-hive/ ${HIVE_HOME}/conf/
+COPY ${PATH_PREFIX}/../common/conf-hive/ /etc/hive/conf/
 
 # Generate mapred-site.xml
 RUN chmod 700 /usr/sbin/generate-mapred-site && \
@@ -116,7 +99,7 @@ RUN chmod 700 /usr/sbin/startup.sh && \
     chmod +x /usr/sbin/install_hive.sh && \
     chmod 700 /usr/sbin/install_ldap.sh && \
     sync && \
-    /usr/sbin/install_hive.sh && \
+    /usr/sbin/install_hive.sh $HIVE_VERSION && \
     ln -sf /usr/share/java/mysql-connector-java.jar $HIVE_HOME/lib/mysql-connector-java.jar
 
 RUN /usr/sbin/install_ldap.sh

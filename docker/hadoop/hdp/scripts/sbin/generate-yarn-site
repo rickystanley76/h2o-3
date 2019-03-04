@@ -11,17 +11,7 @@ cat > ${HADOOP_CONF_DIR}/yarn-site.xml <<EOF
   </property>
 
   <property>
-    <name>yarn.nodemanager.aux-services.mapreduce_shuffle.class</name>
-    <value>org.apache.hadoop.mapred.ShuffleHandler</value>
-  </property>
-
-  <property>
     <name>yarn.log-aggregation-enable</name>
-    <value>true</value>
-  </property>
-
-  <property>
-    <name>yarn.dispatcher.exit-on-error</name>
     <value>true</value>
   </property>
 
